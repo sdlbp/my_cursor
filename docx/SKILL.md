@@ -1,6 +1,6 @@
 ---
 name: docx
-description: "Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. When Claude needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks"
+description: "DOCX(.docx) creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. Use this skill when working with professional Word documents: creating new docs, editing existing docs, doing redlines/tracked changes, or extracting/inspecting content."
 license: Proprietary. LICENSE.txt has complete terms
 ---
 
@@ -9,6 +9,19 @@ license: Proprietary. LICENSE.txt has complete terms
 ## Overview
 
 A user may ask you to create, edit, or analyze the contents of a .docx file. A .docx file is essentially a ZIP archive containing XML files and other resources that you can read or edit. You have different tools and workflows available for different tasks.
+
+## Inputs / Outputs (Cursor-friendly contract)
+
+### Inputs to collect (ask only if missing)
+- **Target file**: path to the `.docx` (or “create from scratch”).
+- **Intent**: `read/analyze` | `create` | `edit` | `redline` (tracked changes) | `comments`.
+- **Change policy**: preserve formatting? accept/reject existing tracked changes?
+- **Verification expectation**: text-only verification (markdown diff) vs visual verification (images).
+
+### Outputs to produce
+- **Change plan**: a batched checklist (3–10 changes per batch) with location hints.
+- **Artifacts** (when applicable): `current.md`, `verification.md`, and/or page images.
+- **Verification report**: what was checked, and what passed/failed.
 
 ## Workflow Decision Tree
 
@@ -39,6 +52,9 @@ pandoc --track-changes=all path-to-file.docx -o output.md
 # Options: --track-changes=accept/reject/all
 ```
 
+#### Dependency check + fallback
+- If `pandoc` is unavailable, fall back to **Raw XML access** and extract text from `word/document.xml` (structure is noisier but works for locating content).
+
 ### Raw XML access
 You need raw XML access for: comments, complex formatting, document structure, embedded media, and metadata. For any of these features, you'll need to unpack a document and read its raw XML contents.
 
@@ -56,21 +72,24 @@ You need raw XML access for: comments, complex formatting, document structure, e
 When creating a new Word document from scratch, use **docx-js**, which allows you to create Word documents using JavaScript/TypeScript.
 
 ### Workflow
-1. **MANDATORY - READ ENTIRE FILE**: Read [`docx-js.md`](docx-js.md) (~500 lines) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for detailed syntax, critical formatting rules, and best practices before proceeding with document creation.
-2. Create a JavaScript/TypeScript file using Document, Paragraph, TextRun components (You can assume all dependencies are installed, but if not, refer to the dependencies section below)
+1. **Read only what you need**: Open [`docx-js.md`](docx-js.md) and jump to sections relevant to the requested output (basic paragraphs, lists, tables, images, headers/footers). Avoid “read everything” unless you’re blocked.
+2. Create a JavaScript/TypeScript file using `Document`, `Paragraph`, `TextRun` components (if dependencies are missing, see **Dependencies** below).
 3. Export as .docx using Packer.toBuffer()
 
 ## Editing an existing Word document
 
-When editing an existing Word document, use the **Document library** (a Python library for OOXML manipulation). The library automatically handles infrastructure setup and provides methods for document manipulation. For complex scenarios, you can access the underlying DOM directly through the library.
+When editing an existing Word document, prefer the repo’s **Python OOXML helpers** (see `docx/scripts/document.py` and the patterns in `ooxml.md`). These helpers provide both high-level operations and direct DOM access for complex cases.
 
 ### Workflow
-1. **MANDATORY - READ ENTIRE FILE**: Read [`ooxml.md`](ooxml.md) (~600 lines) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for the Document library API and XML patterns for directly editing document files.
+1. **Read only what you need**: Open [`ooxml.md`](ooxml.md) and focus on:
+   - Document helper/API usage (how to load/save, find nodes)
+   - Tracked change patterns (`<w:ins>`, `<w:del>`, rsid handling)
+   - Comments structure (`word/comments.xml`, references in `document.xml`)
 2. Unpack the document: `python ooxml/scripts/unpack.py <office_file> <output_directory>`
-3. Create and run a Python script using the Document library (see "Document Library" section in ooxml.md)
+3. Create and run a Python script using the repo’s OOXML helpers/patterns (see relevant sections in `ooxml.md`, and `docx/scripts/document.py` for implementation).
 4. Pack the final document: `python ooxml/scripts/pack.py <input_directory> <office_file>`
 
-The Document library provides both high-level methods for common operations and direct DOM access for complex scenarios.
+The repo’s OOXML helpers provide both high-level methods for common operations and direct DOM access for complex scenarios.
 
 ## Redlining workflow for document review
 
@@ -113,7 +132,7 @@ Example - Changing "30 days" to "60 days" in a sentence:
    - Sequential: "Batch 1: Pages 1-3", "Batch 2: Pages 4-6"
 
 3. **Read documentation and unpack**:
-   - **MANDATORY - READ ENTIRE FILE**: Read [`ooxml.md`](ooxml.md) (~600 lines) completely from start to finish. **NEVER set any range limits when reading this file.** Pay special attention to the "Document Library" and "Tracked Change Patterns" sections.
+   - Read the necessary sections of [`ooxml.md`](ooxml.md) (Document helper/API + tracked change patterns). Avoid “read everything” unless you’re blocked.
    - **Unpack the document**: `python ooxml/scripts/unpack.py <file.docx> <dir>`
    - **Note the suggested RSID**: The unpack script will suggest an RSID to use for your tracked changes. Copy this RSID for use in step 4b.
 
@@ -188,10 +207,27 @@ pdftoppm -jpeg -r 150 -f 2 -l 5 document.pdf page  # Converts only pages 2-5
 
 ## Dependencies
 
-Required dependencies (install if not available):
+Required dependencies (install if not available). Prefer platform-appropriate commands:
 
-- **pandoc**: `sudo apt-get install pandoc` (for text extraction)
-- **docx**: `npm install -g docx` (for creating new documents)
-- **LibreOffice**: `sudo apt-get install libreoffice` (for PDF conversion)
-- **Poppler**: `sudo apt-get install poppler-utils` (for pdftoppm to convert PDF to images)
-- **defusedxml**: `pip install defusedxml` (for secure XML parsing)
+### macOS (Homebrew)
+- **pandoc**: `brew install pandoc` (text extraction)
+- **LibreOffice**: `brew install --cask libreoffice` (DOCX → PDF via `soffice`)
+- **Poppler**: `brew install poppler` (PDF → images via `pdftoppm`)
+- **docx (JS library)**: prefer project-local install (e.g. `npm add docx`) over global; use global only if required.
+
+### Debian/Ubuntu
+- **pandoc**: `sudo apt-get install pandoc`
+- **LibreOffice**: `sudo apt-get install libreoffice`
+- **Poppler**: `sudo apt-get install poppler-utils`
+
+### Python
+- **defusedxml**: `pip install defusedxml` (secure XML parsing)
+
+### Quick checks
+Use these to confirm availability before relying on a tool:
+```bash
+command -v pandoc
+command -v soffice
+command -v pdftoppm
+python -c "import defusedxml; print('defusedxml ok')"
+```
