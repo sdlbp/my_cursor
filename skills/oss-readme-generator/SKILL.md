@@ -32,6 +32,8 @@ description: Generate bilingual (English and Chinese) README files for open sour
 生成英文 README 的默认结构如下，可根据实际情况适当增删小节，但不要改变章节的**大体顺序**：
 
 ```markdown
+[简体中文](./docs/README-zh.md)
+
 ## What is [Project Name or Tool Name]
 
 One concise sentence that accurately describes what this project/tool does and its core purpose.
@@ -107,13 +109,13 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 用一句话准确概述这个项目/工具的核心用途和价值。
 
-## 功能特性（Features）
+## 功能特性
 
 - [功能点 1]：简要说明
 - [功能点 2]：简要说明
 - [功能点 3]：简要说明
 
-## 安装说明（Installation）
+## 安装说明
 
 先说明依赖环境，再说明具体安装步骤。
 
@@ -127,7 +129,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 [# 安装命令示例]
 ```
 
-## 使用方法（Usage）
+## 使用方法
 
 通过示例展示如何使用。
 
@@ -136,12 +138,12 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 [# 基本使用示例（命令行或代码）]
 ```
 
-### 进阶用法（可选）
+### 进阶用法
 ```bash
 [# 进阶配置或多场景示例]
 ```
 
-## API 说明（API）
+## API 说明
 
 使用表格说明 API，用中文解释参数和行为。
 
@@ -149,7 +151,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 |------|-------------|------|------|----------------|
 | `foo()` | 函数 | [作用说明] | `bar: string` | `Promise<Result>` |
 
-## 许可证（License）
+## 许可证
 
 说明使用的开源协议，例如：
 
@@ -162,28 +164,16 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 ### 4. 输出要求与文件位置
 
-当用户请求生成 README 时：
+当用户请求生成 README 时，**直接在对应文件位置生成内容**（而不是要求用户复制粘贴）：
 
 1. **英文内容**：
-   - 作为主 README 内容输出（通常对应 `README.md`）
-   - 先在对话中以 Markdown 展示完整英文版本
+   - 写入项目根目录的 `README.md`（若文件已存在则更新/覆盖相关内容）
+   - 若生成了中文 README，需在英文 README 顶部合适位置加入中文索引链接（如 `简体中文`）
 2. **中文内容**：
-   - 以单独的 Markdown 内容给出，用于写入 `/docs/README-zh.md`
+   - 写入 `/docs/README-zh.md`（若目录不存在先创建）
    - 保证与英文版本在信息量上大致对应
 
-在回答中，使用如下结构组织输出，便于用户直接复制到对应文件：
-
-```markdown
-## English README (for README.md)
-
-[# full English README content...]
-
----
-
-## 中文 README（写入 /docs/README-zh.md）
-
-[# 完整中文 README 内容...]
-```
+如果用户只要求生成某一语言，则仅生成对应文件。
 
 ### 5. 何时主动使用此 Skill
 
